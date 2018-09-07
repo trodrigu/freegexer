@@ -1,13 +1,14 @@
 module Main exposing (main)
 
 import Browser
-import Element exposing (Element, column, el, padding, px, rgb, row, spacing)
+import Element exposing (Element, alignLeft, alignRight, centerX, centerY, column, el, explain, fill, padding, px, rgb, rgba, row, shrink, spaceEvenly, spacing)
 import Element.Background as Background exposing (color)
+import Element.Border as Border exposing (solid)
+import Element.Font as Font exposing (color, family, sansSerif, typeface)
 import Element.Input as Input exposing (text)
 import Html exposing (Html, button, div, input, label, mark, span, text)
 import Html.Attributes exposing (style)
 import Html.Events exposing (onClick, onInput)
-import Html.Events.Extra.Mouse as EE exposing (onClick)
 import List.Extra as LE exposing (splitAt)
 import Regex exposing (Match, find, fromString)
 
@@ -15,7 +16,6 @@ import Regex exposing (Match, find, fromString)
 type alias Model =
     { regexStr : String
     , thingToMatch : String
-    , cursor : ( Float, Float )
     }
 
 
@@ -23,14 +23,12 @@ initialModel : Model
 initialModel =
     { regexStr = ""
     , thingToMatch = ""
-    , cursor = ( 0.0, 0.0 )
     }
 
 
 type Msg
     = UpdateRegexStr String
     | UpdateThingToMatch String
-    | MoveMsg ( Float, Float )
 
 
 update : Msg -> Model -> Model
@@ -42,19 +40,10 @@ update msg model =
         UpdateThingToMatch str ->
             { model | thingToMatch = str }
 
-        MoveMsg ( x, y ) ->
-            { model | cursor = ( x, y ) }
-
 
 containerElement : Model -> Element Msg
 containerElement model =
     let
-        ( l, r ) =
-            model.cursor
-
-        coordinatesAsString =
-            "( " ++ (l |> String.fromFloat) ++ ", " ++ (r |> String.fromFloat) ++ " )"
-
         toRegex =
             model.regexStr
                 |> Regex.fromString
@@ -62,69 +51,26 @@ containerElement model =
 
         m =
             Regex.find toRegex model.thingToMatch
-
-        cursorLine =
-            let
-                rAsFloat =
-                    floor r
-            in
-            if rAsFloat > 70 then
-                2
-            else
-                1
-
-        cursor =
-            el [] (Element.text "|")
-
-        renderLines =
-            if cursorLine == 1 then
-                el [ Background.color (rgb 214 214 214), padding 10 ]
-                    (column []
-                        [ row [ Element.height (px 25) ]
-                            [ cursor ]
-                        , row [ Element.height (px 25) ]
-                            []
-                        ]
-                    )
-            else
-                el [ Background.color (rgb 214 214 214), padding 10 ]
-                    (column []
-                        [ row [ Element.height (px 25) ]
-                            []
-                        , row []
-                            [ column [ Element.height (px 25) ]
-                                [ cursor ]
-                            ]
-                        ]
-                    )
     in
-    el []
-        (column
-            []
-            [ row
-                [ padding 10 ]
-                [ Input.text []
-                    { onChange = UpdateRegexStr
-                    , text = model.regexStr
-                    , placeholder = Just (Input.placeholder [] (Element.text "\\w"))
-                    , label = Input.labelAbove [] (Element.text "Regex")
-                    }
-                ]
-            , row
-                [ padding 10 ]
-                [ Input.text []
-                    { onChange = UpdateThingToMatch
-                    , text = model.thingToMatch
-                    , placeholder = Just (Input.placeholder [] (Element.text "hello world"))
-                    , label = Input.labelAbove [] (Element.text "Thing to match")
-                    }
-                ]
-            , divyUpMarks model.thingToMatch model.regexStr m
-            , renderLines
-            , row [] [ Element.paragraph [] [ Element.text coordinatesAsString ] ]
-            , row [] [ Element.paragraph [] [ Element.text (cursorLine |> String.fromInt) ] ]
-            ]
-        )
+    row
+        [ Element.width (px 800), Element.height shrink, centerY, centerX, padding 10, spacing 10 ]
+        [ el [ alignLeft, Element.width fill ]
+            (Input.text [ Font.family [ Font.typeface "Consolas", Font.sansSerif ] ]
+                { onChange = UpdateRegexStr
+                , text = model.regexStr
+                , placeholder = Just (Input.placeholder [] Element.none)
+                , label = Input.labelAbove [] (Element.text "Regex")
+                }
+            )
+        , el [ alignRight, Element.width fill ]
+            (Input.text [ Font.family [ Font.typeface "Consolas", Font.sansSerif ], Background.color (rgba 255 255 255 0.1), Element.behindContent (el [] (divyUpMarks model.thingToMatch model.regexStr m)) ]
+                { onChange = UpdateThingToMatch
+                , text = model.thingToMatch
+                , placeholder = Just (Input.placeholder [] Element.none)
+                , label = Input.labelAbove [] (Element.text "Thing to match")
+                }
+            )
+        ]
 
 
 view : Model -> Html Msg
@@ -178,7 +124,7 @@ divyUpMarks ogStr str m =
                 )
                 m
     in
-    row [ padding 10 ]
+    row [ Font.family [ Font.typeface "Consolas", Font.sansSerif ], padding 10 ]
         (List.indexedMap
             (\i e ->
                 let
@@ -186,14 +132,44 @@ divyUpMarks ogStr str m =
                         deepMember i listOfRanges
                 in
                 if isDeepMember then
-                    el [ Background.color (rgb 255 255 0) ] (Element.text e)
-                else
-                    case e of
-                        " " ->
-                            el [ padding 5 ] (Element.text " ")
+                    case e == " " of
+                        True ->
+                            let
+                                _ =
+                                    Debug.log "e" e
+                            in
+                            el
+                                [ Font.color (Element.rgb 255 255 0)
+                                , Element.width (px 11)
+                                , Background.color (rgb 255 255 0)
+                                ]
+                                (Element.text "o")
 
-                        _ ->
-                            el [] (Element.text e)
+                        False ->
+                            el
+                                [ Font.color (Element.rgb 255 255 0)
+                                , Element.width fill
+                                , Background.color (rgb 255 255 0)
+                                ]
+                                (Element.text e)
+                else
+                    case e == " " of
+                        True ->
+                            el
+                                [ Font.color (Element.rgb 255 255 255)
+                                , Element.width (px 11)
+                                , Background.color (rgb 255 255 255)
+                                , Border.solid
+                                ]
+                                (Element.text "o")
+
+                        False ->
+                            el
+                                [ Font.color (Element.rgb 255 255 255)
+                                , Element.width fill
+                                , Background.color (rgb 255 255 255)
+                                ]
+                                (Element.text e)
             )
             strAsList
         )
