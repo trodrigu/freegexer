@@ -10,6 +10,7 @@
             "elm/json": "1.0.0",
             "elm/regex": "1.0.0",
             "elm-community/list-extra": "8.0.0",
+            "elm-community/string-extra": "3.0.0",
             "mdgriffith/elm-ui": "1.0.0",
             "mpizenberg/elm-pointer-events": "3.0.0"
         },

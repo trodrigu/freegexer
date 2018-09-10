@@ -1,16 +1,17 @@
 module Main exposing (main)
 
 import Browser
-import Element exposing (Element, alignLeft, alignRight, centerX, centerY, column, el, explain, fill, padding, px, rgb, rgba, row, shrink, spaceEvenly, spacing)
+import Element exposing (Element, alignLeft, alignRight, centerX, centerY, column, el, explain, fill, padding, px, rgb, rgba, row, shrink, spaceEvenly, spacing, wrappedRow)
 import Element.Background as Background exposing (color)
 import Element.Border as Border exposing (solid)
 import Element.Font as Font exposing (color, family, sansSerif, typeface)
 import Element.Input as Input exposing (text)
 import Html exposing (Html, button, div, input, label, mark, span, text)
-import Html.Attributes exposing (style)
+import Html.Attributes as Attributes exposing (style)
 import Html.Events exposing (onClick, onInput)
-import List.Extra as LE exposing (splitAt)
+import List.Extra as LE exposing (getAt, greedyGroupsOf, splitAt)
 import Regex exposing (Match, find, fromString)
+import String.Extra as SE exposing (softBreak)
 
 
 type alias Model =
@@ -49,12 +50,19 @@ containerElement model =
                 |> Regex.fromString
                 |> Maybe.withDefault Regex.never
 
+        thingToMatchSoftBroke =
+            softBreak 84 model.thingToMatch
+
         m =
-            Regex.find toRegex model.thingToMatch
+            List.map
+                (\e ->
+                    Regex.find toRegex e
+                )
+                thingToMatchSoftBroke
     in
-    row
-        [ Element.width (px 800), Element.height shrink, centerY, centerX, padding 10, spacing 10 ]
-        [ el [ alignLeft, Element.width fill ]
+    column
+        [ Element.width fill, Element.height shrink, centerY, centerX, padding 10 ]
+        [ el [ Element.width fill ]
             (Input.text [ Font.family [ Font.typeface "Consolas", Font.sansSerif ] ]
                 { onChange = UpdateRegexStr
                 , text = model.regexStr
@@ -62,12 +70,20 @@ containerElement model =
                 , label = Input.labelAbove [] (Element.text "Regex")
                 }
             )
-        , el [ alignRight, Element.width fill ]
-            (Input.text [ Font.family [ Font.typeface "Consolas", Font.sansSerif ], Background.color (rgba 255 255 255 0.1), Element.behindContent (el [] (divyUpMarks model.thingToMatch model.regexStr m)) ]
+        , el [ Element.width fill ]
+            (Input.multiline
+                [ Font.family
+                    [ Font.typeface "Consolas"
+                    , Font.sansSerif
+                    ]
+                , Background.color (rgba 255 255 255 0.1)
+                , Element.behindContent (el [] (divyUpMarks model.thingToMatch model.regexStr m))
+                ]
                 { onChange = UpdateThingToMatch
                 , text = model.thingToMatch
                 , placeholder = Just (Input.placeholder [] Element.none)
                 , label = Input.labelAbove [] (Element.text "Thing to match")
+                , spellcheck = False
                 }
             )
         ]
@@ -84,25 +100,137 @@ checkIfInHead d l =
     List.member d l
 
 
-deepMember : Int -> List (List Int) -> Bool
-deepMember d l =
-    case l of
+deepMember : Int -> Int -> List (List (List Int)) -> Bool
+deepMember index d l =
+    let
+        matchRow =
+            case getAt index l of
+                Just row ->
+                    row
+
+                Nothing ->
+                    []
+
+        -- nothing =
+        --     if index == 1 then
+        --         let
+        --             _ =
+        --                 Debug.log "matchRow" matchRow
+        --             _ =
+        --                 Debug.log "d" d
+        --         in
+        --         0
+        --     else
+        --         0
+    in
+    case matchRow of
         [] ->
             False
 
         innerList ->
+            let
+                nothing =
+                    if index == 1 then
+                        let
+                            _ =
+                                Debug.log "innerList" innerList
+                        in
+                        0
+                    else
+                        0
+            in
             case LE.uncons innerList of
                 Just ( head, rest ) ->
                     if checkIfInHead d head then
                         True
                     else
-                        deepMember d rest
+                        -- let
+                        --     nothing =
+                        --         if index == 1 then
+                        --             let
+                        --                 _ =
+                        --                     Debug.log "d" d
+                        --                 _ =
+                        --                     Debug.log "head" head
+                        --             in
+                        --             0
+                        --         else
+                        --             0
+                        -- in
+                        deepMember index d [ rest ]
 
                 Nothing ->
                     False
 
 
-divyUpMarks : String -> String -> List Match -> Element msg
+resolveWordBreaks : List (List String) -> List (List String)
+resolveWordBreaks list =
+    let
+        ( l, r ) =
+            LE.mapAccuml
+                (\memo e ->
+                    let
+                        reversedList =
+                            e
+                                |> List.reverse
+
+                        updatedCurrent =
+                            let
+                                droppedList =
+                                    LE.dropWhile
+                                        (\dropE ->
+                                            let
+                                                result =
+                                                    dropE /= " " && dropE /= "\n"
+                                            in
+                                            result
+                                        )
+                                        reversedList
+                                        |> List.reverse
+                            in
+                            droppedList ++ memo
+
+                        updatedMemo =
+                            LE.takeWhile
+                                (\takeE ->
+                                    let
+                                        result =
+                                            takeE /= " " && takeE /= "\n"
+                                    in
+                                    result
+                                )
+                                reversedList
+                                |> List.reverse
+                    in
+                    ( updatedMemo, updatedCurrent )
+                )
+                []
+                list
+    in
+    r
+
+
+listOfRanges : List (List Match) -> List (List (List Int))
+listOfRanges m =
+    List.map
+        (\row ->
+            List.map
+                (\innerE ->
+                    let
+                        length =
+                            String.length innerE.match
+
+                        range =
+                            List.range innerE.index (innerE.index + length - 1)
+                    in
+                    range
+                )
+                row
+        )
+        m
+
+
+divyUpMarks : String -> String -> List (List Match) -> Element msg
 divyUpMarks ogStr str m =
     let
         strAsList =
@@ -110,68 +238,71 @@ divyUpMarks ogStr str m =
                 |> String.toList
                 |> List.map (\e -> String.fromChar e)
 
-        listOfRanges =
-            List.map
-                (\e ->
-                    let
-                        length =
-                            String.length e.match
+        count =
+            strAsList
+                |> List.length
 
-                        range =
-                            List.range e.index (e.index + length - 1)
-                    in
-                    range
-                )
-                m
+        listOfLists =
+            strAsList
+                |> greedyGroupsOf 84
+
+        last =
+            case LE.last listOfLists of
+                Just innerl ->
+                    innerl
+
+                Nothing ->
+                    []
+
+        withResolvedWordBreaks =
+            ogStr
+                |> softBreak 84
+                |> List.map
+                    (\e -> String.split "" e)
+
+        lRanges =
+            listOfRanges m
     in
-    row [ Font.family [ Font.typeface "Consolas", Font.sansSerif ], padding 10 ]
+    column []
         (List.indexedMap
-            (\i e ->
+            (\outerIndex innerRow ->
                 let
-                    isDeepMember =
-                        deepMember i listOfRanges
+                    insideRow =
+                        innerRow
                 in
-                if isDeepMember then
-                    case e == " " of
-                        True ->
+                row [ Element.width fill, Element.height shrink, padding 10 ]
+                    (List.indexedMap
+                        (\i e ->
                             let
-                                _ =
-                                    Debug.log "e" e
+                                isDeepMember =
+                                    deepMember outerIndex i lRanges
+
+                                emptyStyle =
+                                    case e of
+                                        " " ->
+                                            [ Element.htmlAttribute <| Attributes.style "display" "block" ]
+
+                                        _ ->
+                                            []
+
+                                style =
+                                    if isDeepMember then
+                                        [ Font.color (Element.rgb 255 255 0)
+                                        , Background.color (rgb 255 255 0)
+                                        ]
+                                    else
+                                        [ Font.color (Element.rgb 255 255 255)
+                                        , Background.color (rgb 255 255 255)
+                                        ]
                             in
                             el
-                                [ Font.color (Element.rgb 255 255 0)
-                                , Element.width (px 11)
-                                , Background.color (rgb 255 255 0)
-                                ]
-                                (Element.text "o")
-
-                        False ->
-                            el
-                                [ Font.color (Element.rgb 255 255 0)
-                                , Element.width fill
-                                , Background.color (rgb 255 255 0)
-                                ]
+                                (style ++ emptyStyle)
                                 (Element.text e)
-                else
-                    case e == " " of
-                        True ->
-                            el
-                                [ Font.color (Element.rgb 255 255 255)
-                                , Element.width (px 11)
-                                , Background.color (rgb 255 255 255)
-                                , Border.solid
-                                ]
-                                (Element.text "o")
-
-                        False ->
-                            el
-                                [ Font.color (Element.rgb 255 255 255)
-                                , Element.width fill
-                                , Background.color (rgb 255 255 255)
-                                ]
-                                (Element.text e)
+                        )
+                        innerRow
+                    )
             )
-            strAsList
+            withResolvedWordBreaks
         )
 
 
