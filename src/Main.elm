@@ -62,7 +62,7 @@ containerElement model =
                 thingToMatchSoftBroke
     in
     column
-        [ Element.width fill, Element.height shrink, centerY, centerX, padding 10 ]
+        [ Element.width (px 400), Element.height shrink, centerY, centerX, padding 10 ]
         [ el [ Element.width fill ]
             (Input.text [ Font.family [ Font.typeface "Consolas", Font.sansSerif ] ]
                 { onChange = UpdateRegexStr
@@ -71,7 +71,9 @@ containerElement model =
                 , label = Input.labelAbove [] (Element.text "Regex")
                 }
             )
-        , el [ Element.width fill ]
+        , el
+            [ Element.width fill
+            ]
             (Input.multiline
                 [ Font.family
                     [ Font.typeface "Consolas"
@@ -79,6 +81,7 @@ containerElement model =
                     ]
                 , Background.color (rgba 255 255 255 0.1)
                 , Element.behindContent (el [] (divyUpMarks model.thingToMatch model.regexStr m))
+                , Element.height (px 300)
                 ]
                 { onChange = UpdateThingToMatch
                 , text = model.thingToMatch
@@ -144,7 +147,7 @@ divyUpMarks ogStr str m =
                     insideRow =
                         innerRow
                 in
-                row [ Element.width fill, Element.height shrink ]
+                row [ paddingXY 0 2, Element.width fill, Element.height shrink ]
                     (List.indexedMap
                         (\i e ->
                             let
