@@ -1,7 +1,7 @@
 module Main exposing (main)
 
 import Browser
-import Element exposing (Element, alignLeft, alignRight, centerX, centerY, column, el, explain, fill, padding, px, rgb, rgba, row, shrink, spaceEvenly, spacing, wrappedRow)
+import Element exposing (Element, alignLeft, alignRight, centerX, centerY, column, el, explain, fill, padding, paddingXY, px, rgb, rgba, row, shrink, spaceEvenly, spacing, wrappedRow)
 import Element.Background as Background exposing (color)
 import Element.Border as Border exposing (solid)
 import Element.Font as Font exposing (color, family, sansSerif, typeface)
@@ -12,6 +12,7 @@ import Html.Events exposing (onClick, onInput)
 import List.Extra as LE exposing (getAt, greedyGroupsOf, splitAt)
 import Regex exposing (Match, find, fromString)
 import String.Extra as SE exposing (softBreak)
+import Utility exposing (checkIfInHead, deepMember)
 
 
 type alias Model =
@@ -95,121 +96,6 @@ view model =
         (containerElement model)
 
 
-checkIfInHead : Int -> List Int -> Bool
-checkIfInHead d l =
-    List.member d l
-
-
-deepMember : Int -> Int -> List (List (List Int)) -> Bool
-deepMember index d l =
-    let
-        matchRow =
-            case getAt index l of
-                Just row ->
-                    row
-
-                Nothing ->
-                    []
-
-        -- nothing =
-        --     if index == 1 then
-        --         let
-        --             _ =
-        --                 Debug.log "matchRow" matchRow
-        --             _ =
-        --                 Debug.log "d" d
-        --         in
-        --         0
-        --     else
-        --         0
-    in
-    case matchRow of
-        [] ->
-            False
-
-        innerList ->
-            let
-                nothing =
-                    if index == 1 then
-                        let
-                            _ =
-                                Debug.log "innerList" innerList
-                        in
-                        0
-                    else
-                        0
-            in
-            case LE.uncons innerList of
-                Just ( head, rest ) ->
-                    if checkIfInHead d head then
-                        True
-                    else
-                        -- let
-                        --     nothing =
-                        --         if index == 1 then
-                        --             let
-                        --                 _ =
-                        --                     Debug.log "d" d
-                        --                 _ =
-                        --                     Debug.log "head" head
-                        --             in
-                        --             0
-                        --         else
-                        --             0
-                        -- in
-                        deepMember index d [ rest ]
-
-                Nothing ->
-                    False
-
-
-resolveWordBreaks : List (List String) -> List (List String)
-resolveWordBreaks list =
-    let
-        ( l, r ) =
-            LE.mapAccuml
-                (\memo e ->
-                    let
-                        reversedList =
-                            e
-                                |> List.reverse
-
-                        updatedCurrent =
-                            let
-                                droppedList =
-                                    LE.dropWhile
-                                        (\dropE ->
-                                            let
-                                                result =
-                                                    dropE /= " " && dropE /= "\n"
-                                            in
-                                            result
-                                        )
-                                        reversedList
-                                        |> List.reverse
-                            in
-                            droppedList ++ memo
-
-                        updatedMemo =
-                            LE.takeWhile
-                                (\takeE ->
-                                    let
-                                        result =
-                                            takeE /= " " && takeE /= "\n"
-                                    in
-                                    result
-                                )
-                                reversedList
-                                |> List.reverse
-                    in
-                    ( updatedMemo, updatedCurrent )
-                )
-                []
-                list
-    in
-    r
-
-
 listOfRanges : List (List Match) -> List (List (List Int))
 listOfRanges m =
     List.map
@@ -238,21 +124,9 @@ divyUpMarks ogStr str m =
                 |> String.toList
                 |> List.map (\e -> String.fromChar e)
 
-        count =
-            strAsList
-                |> List.length
-
         listOfLists =
             strAsList
                 |> greedyGroupsOf 84
-
-        last =
-            case LE.last listOfLists of
-                Just innerl ->
-                    innerl
-
-                Nothing ->
-                    []
 
         withResolvedWordBreaks =
             ogStr
@@ -263,19 +137,27 @@ divyUpMarks ogStr str m =
         lRanges =
             listOfRanges m
     in
-    column []
+    column [ padding 10 ]
         (List.indexedMap
             (\outerIndex innerRow ->
                 let
                     insideRow =
                         innerRow
                 in
-                row [ Element.width fill, Element.height shrink, padding 10 ]
+                row [ Element.width fill, Element.height shrink ]
                     (List.indexedMap
                         (\i e ->
                             let
+                                matchRow =
+                                    case getAt outerIndex lRanges of
+                                        Just row ->
+                                            row
+
+                                        Nothing ->
+                                            []
+
                                 isDeepMember =
-                                    deepMember outerIndex i lRanges
+                                    deepMember outerIndex i matchRow
 
                                 emptyStyle =
                                     case e of
