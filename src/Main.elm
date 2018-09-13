@@ -52,7 +52,7 @@ containerElement model =
                 |> Maybe.withDefault Regex.never
 
         thingToMatchSoftBroke =
-            softBreak 84 model.thingToMatch
+            softBreak 55 model.thingToMatch
 
         m =
             List.map
@@ -62,7 +62,7 @@ containerElement model =
                 thingToMatchSoftBroke
     in
     column
-        [ Element.width (px 400), Element.height shrink, centerY, centerX, padding 10 ]
+        [ Element.width (px 560), Element.height shrink, centerY, centerX, padding 10 ]
         [ el [ Element.width fill ]
             (Input.text [ Font.family [ Font.typeface "Consolas", Font.sansSerif ] ]
                 { onChange = UpdateRegexStr
@@ -119,6 +119,28 @@ listOfRanges m =
         m
 
 
+
+-- go through and see if it contains \n\n
+-- if it goes through then add another row right after :)!
+
+
+accomodateDoubleNewLines : List String -> List String
+accomodateDoubleNewLines l =
+    List.foldl
+        (\e memo ->
+            if String.contains "\n\n" e then
+                let
+                    splitString =
+                        String.split "\n\n" e
+                in
+                memo ++ splitString
+            else
+                memo ++ [ e ]
+        )
+        []
+        l
+
+
 divyUpMarks : String -> String -> List (List Match) -> Element msg
 divyUpMarks ogStr str m =
     let
@@ -129,11 +151,12 @@ divyUpMarks ogStr str m =
 
         listOfLists =
             strAsList
-                |> greedyGroupsOf 84
+                |> greedyGroupsOf 55
 
         withResolvedWordBreaks =
             ogStr
-                |> softBreak 84
+                |> softBreak 55
+                |> accomodateDoubleNewLines
                 |> List.map
                     (\e -> String.split "" e)
 
