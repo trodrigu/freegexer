@@ -1,7 +1,7 @@
 module Main exposing (main)
 
 import Browser
-import Element exposing (Element, alignLeft, alignRight, centerX, centerY, column, el, explain, fill, padding, paddingXY, px, rgb, rgba, row, shrink, spaceEvenly, spacing, wrappedRow)
+import Element exposing (Element, alignLeft, alignRight, centerX, centerY, column, el, explain, fill, padding, paddingEach, paddingXY, px, rgb, rgba, row, shrink, spaceEvenly, spacing, wrappedRow)
 import Element.Background as Background exposing (color)
 import Element.Border as Border exposing (solid)
 import Element.Font as Font exposing (color, family, sansSerif, typeface)
@@ -53,8 +53,9 @@ containerElement model =
 
         thingToMatchSoftBroke =
             softBreak 55 model.thingToMatch
+                |> accomodateDoubleNewLines
 
-        m =
+        matches =
             List.map
                 (\e ->
                     Regex.find toRegex e
@@ -62,7 +63,7 @@ containerElement model =
                 thingToMatchSoftBroke
     in
     column
-        [ Element.width (px 560), Element.height shrink, centerY, centerX, padding 10 ]
+        [ Element.width (px 660), Element.height shrink, centerY, centerX, padding 10 ]
         [ el [ Element.width fill ]
             (Input.text [ Font.family [ Font.typeface "Consolas", Font.sansSerif ] ]
                 { onChange = UpdateRegexStr
@@ -80,8 +81,8 @@ containerElement model =
                     , Font.sansSerif
                     ]
                 , Background.color (rgba 255 255 255 0.1)
-                , Element.behindContent (el [] (divyUpMarks model.thingToMatch model.regexStr m))
-                , Element.height (px 300)
+                , Element.behindContent (el [] (divyUpMarks model.thingToMatch model.regexStr matches))
+                , Element.height (px 370)
                 ]
                 { onChange = UpdateThingToMatch
                 , text = model.thingToMatch
@@ -142,7 +143,7 @@ accomodateDoubleNewLines l =
 
 
 divyUpMarks : String -> String -> List (List Match) -> Element msg
-divyUpMarks ogStr str m =
+divyUpMarks ogStr str matches =
     let
         strAsList =
             ogStr
@@ -161,7 +162,7 @@ divyUpMarks ogStr str m =
                     (\e -> String.split "" e)
 
         lRanges =
-            listOfRanges m
+            listOfRanges matches
     in
     column [ padding 10 ]
         (List.indexedMap
@@ -170,45 +171,58 @@ divyUpMarks ogStr str m =
                     insideRow =
                         innerRow
                 in
-                row [ paddingXY 0 2, Element.width fill, Element.height shrink ]
-                    (List.indexedMap
-                        (\i e ->
-                            let
-                                matchRow =
-                                    case getAt outerIndex lRanges of
-                                        Just row ->
-                                            row
+                if innerRow == [] then
+                    row
+                        [ paddingXY 0 2
+                        , Element.width fill
+                        , Element.height shrink
+                        ]
+                        [ el
+                            [ Font.color (Element.rgb 255 255 255)
+                            , Background.color (rgb 255 255 255)
+                            ]
+                            (Element.text "a")
+                        ]
+                else
+                    row [ paddingEach { top = 2, right = 0, bottom = 1, left = 0 }, Element.width fill, Element.height shrink ]
+                        (List.indexedMap
+                            (\i e ->
+                                let
+                                    matchRow =
+                                        case getAt outerIndex lRanges of
+                                            Just row ->
+                                                row
 
-                                        Nothing ->
-                                            []
+                                            Nothing ->
+                                                []
 
-                                isDeepMember =
-                                    deepMember outerIndex i matchRow
+                                    isDeepMember =
+                                        deepMember outerIndex i matchRow
 
-                                emptyStyle =
-                                    case e of
-                                        " " ->
-                                            [ Element.htmlAttribute <| Attributes.style "display" "block" ]
+                                    emptyStyle =
+                                        case e of
+                                            " " ->
+                                                [ Element.htmlAttribute <| Attributes.style "display" "block" ]
 
-                                        _ ->
-                                            []
+                                            _ ->
+                                                []
 
-                                style =
-                                    if isDeepMember then
-                                        [ Font.color (Element.rgb 255 255 0)
-                                        , Background.color (rgb 255 255 0)
-                                        ]
-                                    else
-                                        [ Font.color (Element.rgb 255 255 255)
-                                        , Background.color (rgb 255 255 255)
-                                        ]
-                            in
-                            el
-                                (style ++ emptyStyle)
-                                (Element.text e)
+                                    style =
+                                        if isDeepMember then
+                                            [ Font.color (Element.rgb 255 255 0)
+                                            , Background.color (rgb 255 255 0)
+                                            ]
+                                        else
+                                            [ Font.color (Element.rgb 255 255 255)
+                                            , Background.color (rgb 255 255 255)
+                                            ]
+                                in
+                                el
+                                    (style ++ emptyStyle)
+                                    (Element.text e)
+                            )
+                            innerRow
                         )
-                        innerRow
-                    )
             )
             withResolvedWordBreaks
         )
