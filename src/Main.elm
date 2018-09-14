@@ -63,9 +63,18 @@ containerElement model =
                 thingToMatchSoftBroke
     in
     column
-        [ Element.width (px 660), Element.height shrink, centerY, centerX, padding 10 ]
-        [ el [ Element.width fill ]
-            (Input.text [ Font.family [ Font.typeface "Consolas", Font.sansSerif ] ]
+        [ Element.width (px 660)
+        , Element.height shrink
+        , centerY
+        , centerX
+        , padding 10
+        ]
+        [ el
+            [ Element.width fill
+            , padding 10
+            ]
+            (Input.text
+                []
                 { onChange = UpdateRegexStr
                 , text = model.regexStr
                 , placeholder = Just (Input.placeholder [] Element.none)
@@ -74,13 +83,10 @@ containerElement model =
             )
         , el
             [ Element.width fill
+            , padding 10
             ]
             (Input.multiline
-                [ Font.family
-                    [ Font.typeface "Consolas"
-                    , Font.sansSerif
-                    ]
-                , Background.color (rgba 255 255 255 0.1)
+                [ Background.color (rgba 255 255 255 0.1)
                 , Element.behindContent (el [] (divyUpMarks model.thingToMatch model.regexStr matches))
                 , Element.height (px 370)
                 ]
@@ -96,7 +102,14 @@ containerElement model =
 
 view : Model -> Html Msg
 view model =
-    Element.layout []
+    Element.layout
+        [ Font.family
+            [ Font.external
+                { name = "Fira Sans"
+                , url = "https://fonts.googleapis.com/css?family=Fira+Sans"
+                }
+            ]
+        ]
         (containerElement model)
 
 
