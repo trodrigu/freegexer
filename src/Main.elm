@@ -52,7 +52,7 @@ containerElement model =
                 |> Maybe.withDefault Regex.never
 
         thingToMatchSoftBroke =
-            softBreak 55 model.thingToMatch
+            softBreak 66 model.thingToMatch
                 |> accomodateDoubleNewLines
 
         matches =
@@ -63,7 +63,7 @@ containerElement model =
                 thingToMatchSoftBroke
     in
     column
-        [ Element.width (px 660)
+        [ Element.width (px 672)
         , Element.height shrink
         , centerY
         , centerX
@@ -163,13 +163,9 @@ divyUpMarks ogStr str matches =
                 |> String.toList
                 |> List.map (\e -> String.fromChar e)
 
-        listOfLists =
-            strAsList
-                |> greedyGroupsOf 55
-
         withResolvedWordBreaks =
             ogStr
-                |> softBreak 55
+                |> softBreak 66
                 |> accomodateDoubleNewLines
                 |> List.map
                     (\e -> String.split "" e)
