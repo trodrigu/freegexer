@@ -2,7 +2,7 @@ module Main exposing (main)
 
 import Browser
 import Element exposing (Element, alignLeft, alignRight, centerX, centerY, column, el, explain, fill, padding, paddingEach, paddingXY, px, rgb, rgba, row, shrink, spaceEvenly, spacing, wrappedRow)
-import Element.Background as Background exposing (color)
+import Element.Background as Background exposing (color, gradient)
 import Element.Border as Border exposing (solid)
 import Element.Font as Font exposing (color, family, sansSerif, typeface)
 import Element.Input as Input exposing (text)
@@ -51,16 +51,8 @@ containerElement model =
                 |> Regex.fromString
                 |> Maybe.withDefault Regex.never
 
-        thingToMatchSoftBroke =
-            softBreak 66 model.thingToMatch
-                |> accomodateDoubleNewLines
-
         matches =
-            List.map
-                (\e ->
-                    Regex.find toRegex e
-                )
-                thingToMatchSoftBroke
+            Regex.find toRegex model.thingToMatch
     in
     column
         [ Element.width (px 672)
@@ -87,8 +79,9 @@ containerElement model =
             ]
             (Input.multiline
                 [ Background.color (rgba 255 255 255 0.1)
-                , Element.behindContent (el [] (divyUpMarks model.thingToMatch model.regexStr matches))
+                , Element.behindContent (el [] (divyUpMarks model.thingToMatch model.regexStr model))
                 , Element.height (px 370)
+                , Element.htmlAttribute <| Attributes.style "wrap" "off"
                 ]
                 { onChange = UpdateThingToMatch
                 , text = model.thingToMatch
@@ -113,127 +106,109 @@ view model =
         (containerElement model)
 
 
-listOfRanges : List (List Match) -> List (List (List Int))
+listOfRanges : List Match -> List (List Int)
 listOfRanges m =
     List.map
-        (\row ->
-            List.map
-                (\innerE ->
-                    let
-                        length =
-                            String.length innerE.match
+        (\innerE ->
+            let
+                length =
+                    String.length innerE.match
 
-                        range =
-                            List.range innerE.index (innerE.index + length - 1)
-                    in
-                    range
-                )
-                row
+                range =
+                    List.range innerE.index (innerE.index + length - 1)
+            in
+            range
         )
         m
 
 
-
--- go through and see if it contains \n\n
--- if it goes through then add another row right after :)!
-
-
-accomodateDoubleNewLines : List String -> List String
-accomodateDoubleNewLines l =
-    List.foldl
-        (\e memo ->
-            if String.contains "\n\n" e then
-                let
-                    splitString =
-                        String.split "\n\n" e
-                in
-                memo ++ splitString
-            else
-                memo ++ [ e ]
-        )
-        []
-        l
-
-
-divyUpMarks : String -> String -> List (List Match) -> Element msg
-divyUpMarks ogStr str matches =
+divyUpMarks : String -> String -> Model -> Element msg
+divyUpMarks ogStr str model =
     let
         strAsList =
             ogStr
                 |> String.toList
-                |> List.map (\e -> String.fromChar e)
 
-        withResolvedWordBreaks =
+        words =
             ogStr
-                |> softBreak 66
-                |> accomodateDoubleNewLines
-                |> List.map
-                    (\e -> String.split "" e)
-
-        lRanges =
-            listOfRanges matches
+                |> Debug.log "ogStr"
+                |> String.words
+                |> List.intersperse " "
+                |> Debug.log "words"
     in
-    column [ padding 10 ]
+    wrappedRow [ paddingEach { bottom = 10, right = 10, left = 13, top = 13 } ]
         (List.indexedMap
-            (\outerIndex innerRow ->
-                let
-                    insideRow =
-                        innerRow
-                in
-                if innerRow == [] then
-                    row
-                        [ paddingXY 0 2
-                        , Element.width fill
-                        , Element.height shrink
-                        ]
-                        [ el
-                            [ Font.color (Element.rgb 255 255 255)
-                            , Background.color (rgb 255 255 255)
-                            ]
-                            (Element.text "a")
-                        ]
-                else
-                    row [ paddingEach { top = 2, right = 0, bottom = 1, left = 0 }, Element.width fill, Element.height shrink ]
-                        (List.indexedMap
-                            (\i e ->
-                                let
-                                    matchRow =
-                                        case getAt outerIndex lRanges of
-                                            Just row ->
-                                                row
+            (\index word ->
+                -- let
+                -- isDeepMember =
+                --     deepMember index lRanges
+                -- emptyStyle =
+                --     case character of
+                --         " " ->
+                --             [ Element.htmlAttribute <| Attributes.style "display" "block" ]
+                --         _ ->
+                --             []
+                -- style =
+                --     if isDeepMember then
+                --         [ Font.color (Element.rgb 255 255 0)
+                --         , Background.color (rgb 255 255 0)
+                --         ]
+                --     else
+                --         [ Font.color (Element.rgb 255 255 255)
+                --         , Background.color (rgb 255 255 255)
+                --         ]
+                -- create a new a el on first
+                -- keep adding to text until \s
+                -- when \s then cap it off and then
+                -- use gradient after finding percentage (1/elements)
+                -- in
+                case word == " " of
+                    -- for a given word determine gradients!
+                    -- check all of the indexes
+                    True ->
+                        el [ Element.htmlAttribute <| Attributes.style "display" "block" ] (Element.text word)
 
-                                            Nothing ->
-                                                []
+                    False ->
+                        let
+                            toRegex =
+                                model.regexStr
+                                    |> Regex.fromString
+                                    |> Maybe.withDefault Regex.never
 
-                                    isDeepMember =
-                                        deepMember outerIndex i matchRow
+                            matchIndexes =
+                                Regex.find toRegex word
+                                    |> listOfRanges
 
-                                    emptyStyle =
-                                        case e of
-                                            " " ->
-                                                [ Element.htmlAttribute <| Attributes.style "display" "block" ]
+                            wordAsList =
+                                word
+                                    |> String.toList
 
-                                            _ ->
-                                                []
+                            boolList =
+                                List.indexedMap (\i e -> deepMember i matchIndexes) wordAsList
 
-                                    style =
-                                        if isDeepMember then
-                                            [ Font.color (Element.rgb 255 255 0)
-                                            , Background.color (rgb 255 255 0)
-                                            ]
+                            colorList =
+                                List.map
+                                    (\e ->
+                                        if e == True then
+                                            rgb 255 255 0
                                         else
-                                            [ Font.color (Element.rgb 255 255 255)
-                                            , Background.color (rgb 255 255 255)
-                                            ]
-                                in
-                                el
-                                    (style ++ emptyStyle)
-                                    (Element.text e)
-                            )
-                            innerRow
-                        )
+                                            rgb 255 255 255
+                                    )
+                                    boolList
+
+                            updatedGradient =
+                                gradient { angle = 0.0, steps = colorList }
+                        in
+                        el [ paddingEach { top = 0, bottom = 3, right = 0, left = 0 }, updatedGradient ] (Element.text word)
+             -- if index == 0 of
+             --     el
+             --         (style ++ emptyStyle)
+             --         (Element.text character)
+             -- else
             )
-            withResolvedWordBreaks
+            words
+         --  el [] (text "hello") el [] (text "world")
+         --  make el match up exactly first then do the gradient hack
         )
 
 

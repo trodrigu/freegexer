@@ -3,8 +3,8 @@ module Utility exposing (checkIfInHead, deepMember)
 import List.Extra as LE exposing (getAt, greedyGroupsOf, splitAt)
 
 
-deepMember : Int -> Int -> List (List Int) -> Bool
-deepMember index d l =
+deepMember : Int -> List (List Int) -> Bool
+deepMember d l =
     case l of
         [] ->
             False
@@ -15,7 +15,7 @@ deepMember index d l =
                     if checkIfInHead d head then
                         True
                     else
-                        deepMember index d rest
+                        deepMember d rest
 
                 Nothing ->
                     False
