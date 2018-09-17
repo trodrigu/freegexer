@@ -124,191 +124,126 @@ listOfRanges m =
 divyUpMarks : String -> String -> Model -> Element msg
 divyUpMarks ogStr str model =
     let
-        strAsList =
+        adjustedWords =
             ogStr
                 |> String.toList
+                |> List.foldl
+                    (\e memo ->
+                        if e == '\n' then
+                            memo
+                                ++ [ "\n" ]
+                        else
+                            let
+                                last =
+                                    memo
+                                        |> LE.last
+                                        |> Maybe.withDefault ""
 
-        wordsWithDoubleLineBreaks =
-            ogStr
-                |> String.split "\n\n"
-    in
-    case List.length wordsWithDoubleLineBreaks of
-        1 ->
-            let
-                sentenceSplitAtNewLine =
-                    wordsWithDoubleLineBreaks
-                        |> List.head
-                        |> Maybe.withDefault ""
-                        |> String.split "\n"
+                                eAsString =
+                                    e |> String.fromChar
 
-                wordsSplitUpWithNewLine =
-                    sentenceSplitAtNewLine
-                        |> List.foldl
-                            (\e memo ->
-                                let
-                                    innerWords =
-                                        e
-                                            |> String.words
-                                            |> List.intersperse " "
-                                in
-                                memo ++ innerWords ++ [ "\n" ]
-                            )
-                            []
-                        |> LE.init
-                        |> Maybe.withDefault []
-            in
-            wrappedRow [ Element.width (px 718), paddingEach { bottom = 10, right = 47, left = 13, top = 13 } ]
-                (List.indexedMap
-                    (\index word ->
-                        case word of
-                            "\n" ->
-                                el [ Element.width (fill |> minimum 718) ] Element.none
+                                updatedLast =
+                                    last
+                                        ++ eAsString
 
-                            " " ->
-                                el [ Element.htmlAttribute <| Attributes.style "display" "block" ] (Element.text word)
+                                init =
+                                    memo
+                                        |> LE.init
+                                        |> Maybe.withDefault []
 
-                            _ ->
-                                let
-                                    toRegex =
-                                        model.regexStr
-                                            |> Regex.fromString
-                                            |> Maybe.withDefault Regex.never
+                                updatedMemoLastString =
+                                    init ++ [ updatedLast ]
 
-                                    matchIndexes =
-                                        Regex.find toRegex word
-                                            |> listOfRanges
-
-                                    wordAsList =
-                                        word
-                                            |> String.toList
-
-                                    boolList =
-                                        List.indexedMap (\i e -> deepMember i matchIndexes) wordAsList
-
-                                    colorList =
-                                        List.map
-                                            (\e ->
-                                                if e == True then
-                                                    rgb 255 255 0
-                                                else
-                                                    rgb 255 255 255
-                                            )
-                                            boolList
-
-                                    updatedGradient =
-                                        gradient { angle = pi / 2, steps = colorList }
-                                in
-                                el [ paddingEach { top = 0, bottom = 3, right = 0, left = 0 }, updatedGradient ] (Element.text word)
-                    )
-                    wordsSplitUpWithNewLine
-                )
-
-        _ ->
-            let
-                sentences =
-                    wordsWithDoubleLineBreaks
-                        |> List.foldl
-                            (\e memo ->
-                                let
-                                    innerWordsWithDoubleLineBreaks =
-                                        [ e ] ++ [ "\n\n" ]
-                                in
-                                memo ++ innerWordsWithDoubleLineBreaks
-                            )
-                            []
-            in
-            wrappedRow [ Element.width (px 718), paddingEach { bottom = 10, right = 47, left = 13, top = 13 } ]
-                (List.foldl
-                    (\sentence memo ->
-                        case sentence of
-                            "\n\n" ->
-                                memo
-                                    ++ [ el [ Element.width (fill |> minimum 718) ] Element.none
-                                       , el [ Element.width (fill |> minimum 718), Element.height (px 23) ] Element.none
-                                       ]
-
-                            _ ->
-                                let
-                                    words =
-                                        if String.contains "\n" sentence then
-                                            let
-                                                sentenceSplitAtNewLine =
-                                                    sentence
-                                                        |> String.split "\n"
-
-                                                wordsSplitUpWithNewLine =
-                                                    sentenceSplitAtNewLine
-                                                        |> List.foldl
-                                                            (\e wordMemo ->
-                                                                let
-                                                                    innerWords =
-                                                                        e
-                                                                            |> String.words
-                                                                            |> List.intersperse " "
-                                                                in
-                                                                wordMemo ++ innerWords ++ [ "\n" ]
-                                                            )
-                                                            []
-                                                        |> LE.init
-                                                        |> Maybe.withDefault []
-                                            in
-                                            wordsSplitUpWithNewLine
-                                        else
-                                            sentence
-                                                |> String.words
-                                                |> List.intersperse " "
-
-                                    elements =
-                                        List.foldl
-                                            (\word innerMemo ->
-                                                case word of
-                                                    "\n" ->
-                                                        innerMemo ++ [ el [ Element.width (fill |> minimum 718) ] Element.none ]
-
-                                                    " " ->
-                                                        innerMemo ++ [ el [ Element.htmlAttribute <| Attributes.style "display" "block" ] (Element.text word) ]
-
-                                                    _ ->
-                                                        let
-                                                            toRegex =
-                                                                model.regexStr
-                                                                    |> Regex.fromString
-                                                                    |> Maybe.withDefault Regex.never
-
-                                                            matchIndexes =
-                                                                Regex.find toRegex word
-                                                                    |> listOfRanges
-
-                                                            wordAsList =
-                                                                word
-                                                                    |> String.toList
-
-                                                            boolList =
-                                                                List.indexedMap (\i boolE -> deepMember i matchIndexes) wordAsList
-
-                                                            colorList =
-                                                                List.map
-                                                                    (\colorE ->
-                                                                        if colorE == True then
-                                                                            rgb 255 255 0
-                                                                        else
-                                                                            rgb 255 255 255
-                                                                    )
-                                                                    boolList
-
-                                                            updatedGradient =
-                                                                gradient { angle = pi / 2, steps = colorList }
-                                                        in
-                                                        innerMemo ++ [ el [ paddingEach { top = 0, bottom = 3, right = 0, left = 0 }, updatedGradient ] (Element.text word) ]
-                                            )
-                                            []
-                                            words
-                                in
-                                memo ++ elements
+                                updatedMemo =
+                                    if last == "\n" then
+                                        memo ++ [ eAsString ]
+                                    else
+                                        updatedMemoLastString
+                            in
+                            updatedMemo
                     )
                     []
-                    sentences
-                )
+                |> List.foldl
+                    (\sentence splitSentenceMemo ->
+                        let
+                            splitSentence =
+                                String.words sentence
+                                    |> List.intersperse " "
+                        in
+                        if splitSentence == [ "" ] then
+                            splitSentenceMemo ++ [ sentence ]
+                        else
+                            splitSentenceMemo
+                                ++ splitSentence
+                    )
+                    []
+                |> Debug.log "adjustedWords"
+    in
+    wrappedRow [ Element.width (px 718), paddingEach { bottom = 10, right = 47, left = 13, top = 13 } ]
+        (List.indexedMap
+            (\index word ->
+                case word of
+                    "\n" ->
+                        let
+                            newLineBeforeNewLine =
+                                case index of
+                                    0 ->
+                                        False
+
+                                    _ ->
+                                        let
+                                            prevIndex =
+                                                index - 1
+
+                                            prevElement =
+                                                LE.getAt prevIndex adjustedWords
+                                                    |> Maybe.withDefault ""
+                                        in
+                                        prevElement == "\n"
+                        in
+                        if newLineBeforeNewLine then
+                            el [ Element.height (px 23), Element.width (fill |> Element.minimum 718) ] Element.none
+                        else
+                            el [ Element.width (fill |> Element.minimum 718) ] Element.none
+
+                    " " ->
+                        el [ Element.htmlAttribute <| Attributes.style "display" "block" ] (Element.text word)
+
+                    _ ->
+                        let
+                            toRegex =
+                                model.regexStr
+                                    |> Regex.fromString
+                                    |> Maybe.withDefault Regex.never
+
+                            matchIndexes =
+                                Regex.find toRegex word
+                                    |> listOfRanges
+
+                            wordAsList =
+                                word
+                                    |> String.toList
+
+                            boolList =
+                                List.indexedMap (\i e -> deepMember i matchIndexes) wordAsList
+
+                            colorList =
+                                List.map
+                                    (\e ->
+                                        if e == True then
+                                            rgb 255 255 0
+                                        else
+                                            rgb 255 255 255
+                                    )
+                                    boolList
+
+                            updatedGradient =
+                                gradient { angle = pi / 2, steps = colorList }
+                        in
+                        el [ paddingEach { top = 0, bottom = 3, right = 0, left = 0 }, updatedGradient ] (Element.text word)
+            )
+            adjustedWords
+        )
 
 
 main : Program () Model Msg
