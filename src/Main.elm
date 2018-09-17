@@ -196,7 +196,7 @@ divyUpMarks ogStr str model =
                                             boolList
 
                                     updatedGradient =
-                                        gradient { angle = 0.0, steps = colorList }
+                                        gradient { angle = pi / 2, steps = colorList }
                                 in
                                 el [ paddingEach { top = 0, bottom = 3, right = 0, left = 0 }, updatedGradient ] (Element.text word)
                     )
@@ -297,7 +297,7 @@ divyUpMarks ogStr str model =
                                                                     boolList
 
                                                             updatedGradient =
-                                                                gradient { angle = 0.0, steps = colorList }
+                                                                gradient { angle = pi / 2, steps = colorList }
                                                         in
                                                         innerMemo ++ [ el [ paddingEach { top = 0, bottom = 3, right = 0, left = 0 }, updatedGradient ] (Element.text word) ]
                                             )
