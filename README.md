@@ -1,6 +1,6 @@
 # Freegexer
 
-Freejexer is an app that helps you test different Regexes against the text of your choosing.
+Freegexer is an app that helps you test different Regexes against the text of your choosing.
 
 # Why?
 
