@@ -1,4 +1,4 @@
-module Main exposing (main)
+port module Main exposing (main)
 
 import Browser
 import Element exposing (Element, alignLeft, alignRight, centerX, centerY, column, el, explain, fill, minimum, padding, paddingEach, paddingXY, px, rgb, rgba, row, shrink, spaceEvenly, spacing, wrappedRow)
@@ -9,6 +9,7 @@ import Element.Input as Input exposing (text)
 import Html exposing (Html, button, div, hr, input, label, mark, span, text)
 import Html.Attributes as Attributes exposing (style)
 import Html.Events exposing (onClick, onInput)
+import Json.Decode exposing (Value, decodeValue, int)
 import List.Extra as LE exposing (getAt, greedyGroupsOf, splitAt)
 import Regex exposing (Match, find, fromString)
 import String.Extra as SE exposing (softBreak)
@@ -18,29 +19,65 @@ import Utility exposing (checkIfInHead, deepMember)
 type alias Model =
     { regexStr : String
     , thingToMatch : String
+    , scrollHeight : Int
     }
 
 
-initialModel : Model
-initialModel =
-    { regexStr = ""
-    , thingToMatch = ""
-    }
+initialModel : Int -> ( Model, Cmd Msg )
+initialModel scrollHeight =
+    ( { regexStr = initialRegex
+      , thingToMatch = initialMultiline
+      , scrollHeight = scrollHeight
+      }
+    , Cmd.none
+    )
 
 
 type Msg
     = UpdateRegexStr String
     | UpdateThingToMatch String
+    | UpdateTextAreaHeight (Maybe Int)
 
 
-update : Msg -> Model -> Model
+port getScrollHeight : (Value -> msg) -> Sub msg
+
+
+updateScrollHeight : Sub (Maybe Int)
+updateScrollHeight =
+    getScrollHeight (decodeValue int >> Result.toMaybe)
+
+
+update : Msg -> Model -> ( Model, Cmd Msg )
 update msg model =
     case msg of
+        UpdateTextAreaHeight scrollHeight ->
+            let
+                updatedScrollHeight =
+                    case scrollHeight of
+                        Just innerScrollHeight ->
+                            innerScrollHeight
+
+                        Nothing ->
+                            0
+            in
+            ( { model | scrollHeight = updatedScrollHeight }, Cmd.none )
+
         UpdateRegexStr str ->
-            { model | regexStr = str }
+            ( { model | regexStr = str }, Cmd.none )
 
         UpdateThingToMatch str ->
-            { model | thingToMatch = str }
+            ( { model | thingToMatch = str }, Cmd.none )
+
+
+initialRegex : String
+initialRegex =
+    "([A-Z])\\w+"
+
+
+initialMultiline : String
+initialMultiline =
+    "Freejexer is a project written in Elm created by Tommy Rodriguez, hosted on Netlify.\n\nYou can change up the regex field and see the matches as you type. This project uses the Javascript RegEx engine."
+        |> SE.replace "\\r" ""
 
 
 containerElement : Model -> Element Msg
@@ -80,7 +117,7 @@ containerElement model =
             (Input.multiline
                 [ Background.color (rgba 255 255 255 0.1)
                 , Element.behindContent (el [] (divyUpMarks model.thingToMatch model.regexStr model))
-                , Element.height (px 370)
+                , Element.height (px (model.scrollHeight + 2))
                 ]
                 { onChange = UpdateThingToMatch
                 , text = model.thingToMatch
@@ -129,45 +166,56 @@ divyUpMarks ogStr str model =
                 |> String.toList
                 |> List.foldl
                     (\e memo ->
-                        if e == '\n' then
-                            memo
-                                ++ [ "\n" ]
-                        else
-                            let
-                                last =
-                                    memo
-                                        |> LE.last
-                                        |> Maybe.withDefault ""
+                        case e of
+                            '\n' ->
+                                memo
+                                    ++ [ "\n" ]
 
-                                eAsString =
-                                    e |> String.fromChar
+                            ' ' ->
+                                let
+                                    _ =
+                                        memo
+                                in
+                                memo
+                                    ++ [ " " ]
 
-                                updatedLast =
-                                    last
-                                        ++ eAsString
+                            _ ->
+                                let
+                                    last =
+                                        memo
+                                            |> LE.last
+                                            |> Maybe.withDefault ""
 
-                                init =
-                                    memo
-                                        |> LE.init
-                                        |> Maybe.withDefault []
+                                    eAsString =
+                                        e |> String.fromChar
 
-                                updatedMemoLastString =
-                                    init ++ [ updatedLast ]
+                                    updatedLast =
+                                        last
+                                            ++ eAsString
 
-                                updatedMemo =
-                                    if last == "\n" then
-                                        memo ++ [ eAsString ]
-                                    else
-                                        updatedMemoLastString
-                            in
-                            updatedMemo
+                                    init =
+                                        memo
+                                            |> LE.init
+                                            |> Maybe.withDefault []
+
+                                    updatedMemoLastString =
+                                        init ++ [ updatedLast ]
+
+                                    updatedMemo =
+                                        if last == "\n" || last == " " then
+                                            memo ++ [ eAsString ]
+                                        else
+                                            updatedMemoLastString
+                                in
+                                updatedMemo
                     )
                     []
                 |> List.foldl
                     (\sentence splitSentenceMemo ->
                         let
                             splitSentence =
-                                String.words sentence
+                                sentence
+                                    |> String.words
                                     |> List.intersperse " "
                         in
                         if splitSentence == [ "" ] then
@@ -177,9 +225,8 @@ divyUpMarks ogStr str model =
                                 ++ splitSentence
                     )
                     []
-                |> Debug.log "adjustedWords"
     in
-    wrappedRow [ Element.width (px 718), paddingEach { bottom = 10, right = 47, left = 13, top = 13 } ]
+    wrappedRow [ Element.width (px 718), paddingEach { bottom = 10, right = 54, left = 13, top = 13 } ]
         (List.indexedMap
             (\index word ->
                 case word of
@@ -207,7 +254,37 @@ divyUpMarks ogStr str model =
                             el [ Element.width (fill |> Element.minimum 718) ] Element.none
 
                     " " ->
-                        el [ Element.htmlAttribute <| Attributes.style "display" "block" ] (Element.text word)
+                        let
+                            toRegex =
+                                model.regexStr
+                                    |> Regex.fromString
+                                    |> Maybe.withDefault Regex.never
+
+                            matchIndexes =
+                                Regex.find toRegex word
+                                    |> listOfRanges
+
+                            wordAsList =
+                                word
+                                    |> String.toList
+
+                            boolList =
+                                List.indexedMap (\i e -> deepMember i matchIndexes) wordAsList
+
+                            colorList =
+                                List.map
+                                    (\e ->
+                                        if e == True then
+                                            rgb 255 255 0
+                                        else
+                                            rgb 255 255 255
+                                    )
+                                    boolList
+
+                            updatedGradient =
+                                gradient { angle = pi / 2, steps = colorList }
+                        in
+                        el [ updatedGradient, Element.htmlAttribute <| Attributes.style "display" "block" ] (Element.text word)
 
                     _ ->
                         let
@@ -246,10 +323,16 @@ divyUpMarks ogStr str model =
         )
 
 
-main : Program () Model Msg
+subscriptions : Model -> Sub Msg
+subscriptions model =
+    Sub.batch [ Sub.map UpdateTextAreaHeight updateScrollHeight ]
+
+
+main : Program Int Model Msg
 main =
-    Browser.sandbox
+    Browser.element
         { init = initialModel
         , view = view
         , update = update
+        , subscriptions = subscriptions
         }
