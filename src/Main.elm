@@ -1,7 +1,7 @@
 port module Main exposing (main)
 
 import Browser
-import Element exposing (Element, alignLeft, alignRight, centerX, centerY, column, el, explain, fill, minimum, padding, paddingEach, paddingXY, px, rgb, rgba, row, shrink, spaceEvenly, spacing, wrappedRow)
+import Element exposing (Element, alignLeft, alignRight, centerX, centerY, column, el, explain, fill, link, minimum, padding, paddingEach, paddingXY, px, rgb, rgba, row, shrink, spaceEvenly, spacing, wrappedRow)
 import Element.Background as Background exposing (color, gradient)
 import Element.Border as Border exposing (solid)
 import Element.Font as Font exposing (color, family, sansSerif, typeface)
@@ -126,6 +126,12 @@ containerElement model =
                 , spellcheck = False
                 }
             )
+        , el
+            [ Element.width fill ]
+            (link [ padding 10 ] { url = "https://github.com/trodrigu/freegexer", label = Element.text "Github Repo" })
+        , el
+            [ Element.width fill ]
+            (link [ padding 10 ] { url = "mailto:trodriguez91@icloud.com", label = Element.text "Hire Tommy, a developer with 2 years of experience with Elm." })
         ]
 
 
