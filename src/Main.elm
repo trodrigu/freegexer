@@ -76,7 +76,7 @@ initialRegex =
 
 initialMultiline : String
 initialMultiline =
-    "Freejexer is a project written in Elm created by Tommy Rodriguez, hosted on Netlify.\n\nYou can change up the regex field and see the matches as you type. This project uses the Javascript RegEx engine."
+    "Freegex is a project written in Elm created by Tommy Rodriguez, hosted on Netlify.\n\nYou can change up the regex field and see the matches as you type. This project uses the Javascript RegEx engine."
         |> SE.replace "\\r" ""
 
 
